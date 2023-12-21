@@ -4,10 +4,16 @@ cmake_minimum_required(VERSION 3.14...3.22)
 
 # Note: update this to your new project's name and version
 project(
-  Greeter
+  NiCoLS
   VERSION 1.0
   LANGUAGES CXX
 )
+
+# Particularities
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ---- Include guards ----
 
@@ -33,6 +39,35 @@ CPMAddPackage(
   OPTIONS "FMT_INSTALL YES" # create an installable target
 )
 
+find_package(VTK COMPONENTS CommonCore CommonDataModel CommonMath IOLegacy)
+message(STATUS "VTK_VERSION: ${VTK_VERSION}")
+if(NOT VTK_FOUND)
+  list(
+    APPEND
+    VTK_OPTIONS
+    "BUILD_SHARED_LIBS OFF"
+    "BUILD_TESTING OFF"
+    "VTK_BUILD_EXAMPLES OFF"
+    "VTK_BUILD_TESTING OFF"
+    "VTK_ENABLE_WRAPPING OFF"
+    "VTK_GROUP_ENABLE_Rendering DONT_WANT"
+    "VTK_GROUP_ENABLE_StandAlone DONT_WANT"
+    "VTK_USE_64BIT_IDS ON"
+    "VTK_MODULE_ENABLE_VTK_CommonCore YES"
+    "VTK_MODULE_ENABLE_VTK_CommonDataModel YES"
+    "VTK_MODULE_ENABLE_VTK_CommonMath YES"
+    "VTK_MODULE_ENABLE_VTK_IOLegacy YES"
+  )
+
+  CPMAddPackage(
+    NAME VTK
+    GITHUB_REPOSITORY kitware/vtk
+    VERSION 9.3.0
+    OPTIONS ${VTK_OPTIONS}
+    EXCLUDE_FROM_ALL YES GIT_SUBMODULES "" # Disable submodules
+  )
+endif()
+
 # ---- Add source files ----
 
 # Note: globbing sources is considered bad practice as CMake's generators may not detect new files
@@ -48,10 +83,13 @@ add_library(${PROJECT_NAME} ${headers} ${sources})
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
 
 # being a cross-platform target, we enforce standards conformance on MSVC
-target_compile_options(${PROJECT_NAME} PUBLIC "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/permissive->")
+target_compile_options(
+  ${PROJECT_NAME} PUBLIC "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/permissive->" -Wall -O3
+)
 
 # Link dependencies
 target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${VTK_LIBRARIES})
 
 target_include_directories(
   ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
@@ -74,5 +112,5 @@ packageProject(
   INCLUDE_DESTINATION include/${PROJECT_NAME}-${PROJECT_VERSION}
   VERSION_HEADER "${VERSION_HEADER_LOCATION}"
   COMPATIBILITY SameMajorVersion
-  DEPENDENCIES "fmt 9.1.0"
+  DEPENDENCIES "fmt 9.1.0" "VTK 9.3.0"
 )
